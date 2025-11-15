@@ -1,0 +1,44 @@
+services:
+  mongo:
+    image: mongo:7
+    container_name: mongo_db
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db 
+      #Your database files are saved in the Docker named volume (mongo_data), so restarting or rebuilding the container does not delete your data.
+
+  mlflow:
+    build:
+      context: ./mlflow #folder name
+    container_name: mlflow_server
+    restart: unless-stopped
+    ports:
+        - "5001:5000"
+    
+  trainer:
+    build: 
+      context: ./mltraining
+    container_name: trainer
+    restart: "no" #only needed once, also in quotes so that its not taken as boolean
+    depends_on: 
+      - mlflow
+    environment: 
+      MLFLOW_TRACKING_URI: http://mlfow_server:5000
+
+  flask_app:
+    build:
+      context: ./flask
+    container_name: flask_app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      MLFLOW_TRACKING_URI: http://mlflow_server:5000
+    depends_on:
+      - mlflow
+      - mongo
+
+volumes:
+  mongo_data:  # declare the named volume here
